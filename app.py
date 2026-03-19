@@ -101,11 +101,27 @@ with tab2:
         
         display_df.insert(0, '❌ 刪除', False)
         
+        # 互動式表格 (加入欄位寬度與下拉選單設定)
         edited_df = st.data_editor(
             display_df,
             num_rows="dynamic",
-            use_container_width=True,
-            hide_index=True
+            use_container_width=True, # 保持整體符合螢幕寬度
+            hide_index=True,
+            column_config={
+                "食材名稱": st.column_config.TextColumn(
+                    "食材名稱",
+                    width="large", # 👉 強制變寬！字太長時可以左右滑動查看
+                ),
+                "種類": st.column_config.SelectboxColumn(
+                    "種類",
+                    options=["蔬菜", "肉類", "海鮮", "水果", "調味料", "主食/麵包", "綜合採買", "其他"],
+                    width="medium" # 👉 變成下拉選單，修改超方便
+                ),
+                "❌ 刪除": st.column_config.CheckboxColumn(
+                    "❌ 刪除",
+                    width="small" # 讓刪除按鈕不要佔太多空間
+                )
+            }
         )
         
         if st.button("💾 儲存修改至雲端", use_container_width=True):
