@@ -96,7 +96,21 @@ with tab2:
 
         st.markdown("💡 **提示**：勾選最左邊的「❌ 刪除」可以刪除該筆資料。修改完記得按最下方的儲存按鈕！")
         
-        df = df.sort_values(by='日期', ascending=False)
+        # 👉 新增：專屬排序下拉選單
+        sort_option = st.selectbox(
+            "↕️ 排序方式", 
+            ["日期 (最新到最舊)", "日期 (最舊到最新)", "價格 (最高到最低)", "價格 (最低到最高)"]
+        )
+        
+        # 根據選單的選擇，自動幫資料排序
+        if sort_option == "日期 (最新到最舊)":
+            df = df.sort_values(by=['日期'], ascending=[False])
+        elif sort_option == "日期 (最舊到最新)":
+            df = df.sort_values(by=['日期'], ascending=[True])
+        elif sort_option == "價格 (最高到最低)":
+            df = df.sort_values(by=['價格'], ascending=[False])
+        elif sort_option == "價格 (最低到最高)":
+            df = df.sort_values(by=['價格'], ascending=[True])
         display_df = df[['日期', '種類', '食材名稱', '數量', '單位', '價格']].copy()
         
         display_df.insert(0, '❌ 刪除', False)
