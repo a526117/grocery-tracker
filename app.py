@@ -60,29 +60,11 @@ with tab1:
                 st.error("請填寫食材名稱，並確保價格大於 0 喔！")
 
 # === 分頁 2：顯示數據與編輯 ===
-with tab2:
-    data = sheet.get_all_records()
-
-    if not data:
-        st.info("目前還沒有紀錄，快去「記一筆」吧！")
-    else:
-        df = pd.DataFrame(data)
-        df['價格'] = pd.to_numeric(df['價格'], errors='coerce').fillna(0)
+df = df.sort_values(by='日期', ascending=False)
+        display_df = df[['日期', '種類', '食材名稱', '數量', '單位', '價格']].copy()
         
-        # 取得目前的年份與月份
-        current_month = datetime.now().strftime("%Y-%m")
-        df['日期'] = df['日期'].astype(str)
-        monthly_df = df[df['日期'].str.startswith(current_month)]
-        monthly_spent = int(monthly_df['價格'].sum())
-        
-        # 顯示當月總花費
-        st.metric(label=f"💰 本月 ({current_month}) 總花費", value=f"${monthly_spent:,}")
-        
-        st.markdown("---")
-        st.markdown("💡 **提示**：點擊下方表格即可修改，滑動可看完整欄位。")
-        
-        df = df.sort_values(by='日期', ascending=False)
-        display_df = df[['日期', '種類', '食材名稱', '數量', '單位', '價格']]
+        # 👉 關鍵升級：在表格最左邊插入一個「刪除」打勾欄位
+        display_df.insert(0, '❌ 刪除', False)
         
         # 互動式表格
         edited_df = st.data_editor(
@@ -94,11 +76,23 @@ with tab2:
         
         # 儲存按鈕也改成滿版
         if st.button("💾 儲存修改至雲端", use_container_width=True):
-            edited_df = edited_df.fillna("")
-            updated_data = [edited_df.columns.tolist()] + edited_df.values.tolist()
+            # 1. 找出沒有被打勾 (要保留) 的資料
+            final_df = edited_df[edited_df['❌ 刪除'] == False].copy()
+            
+            # 2. 把「刪除」這個輔助欄位拿掉，準備存回雲端
+            final_df = final_df.drop(columns=['❌ 刪除'])
+            final_df = final_df.fillna("")
+            
+            # 3. 轉換格式並存回 Google 試算表
+            updated_data = [final_df.columns.tolist()] + final_df.values.tolist()
             try:
                 sheet.clear()
-                sheet.update(range_name="A1", values=updated_data)
+                # 確保就算資料全刪光了，也要保留標題列
+                if len(updated_data) > 1:
+                    sheet.update(range_name="A1", values=updated_data)
+                else:
+                    sheet.update(range_name="A1", values=[final_df.columns.tolist()])
+                    
                 st.success("✅ 修改已成功同步！")
                 st.rerun()
             except Exception as e:
