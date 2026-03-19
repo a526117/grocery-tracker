@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import gspread
 from google.oauth2.service_account import Credentials
 import json
@@ -35,7 +35,9 @@ tab1, tab2 = st.tabs(["📝 記一筆", "📊 本月明細與編輯"])
 with tab1:
     st.markdown("### 🛒 新增花費")
     with st.form("expense_form", clear_on_submit=True):
-        date = st.date_input("購買日期", datetime.now())
+        # 設定台灣時區 (UTC+8)
+        tw_tz = timezone(timedelta(hours=8))
+        date = st.date_input("購買日期", datetime.now(tw_tz))
         name = st.text_input("食材名稱 (例如：高麗菜 或 綜合採買)")
         category = st.selectbox("種類", ["蔬菜", "肉類", "海鮮", "水果", "調味料", "主食/麵包", "綜合採買", "其他"])
         
@@ -67,7 +69,8 @@ with tab2:
         df = pd.DataFrame(data)
         df['價格'] = pd.to_numeric(df['價格'], errors='coerce').fillna(0)
         
-        current_month = datetime.now().strftime("%Y-%m")
+        tw_tz = timezone(timedelta(hours=8))
+        current_month = datetime.now(tw_tz).strftime("%Y-%m")
         df['日期'] = df['日期'].astype(str)
         monthly_df = df[df['日期'].str.startswith(current_month)]
         monthly_spent = int(monthly_df['價格'].sum())
