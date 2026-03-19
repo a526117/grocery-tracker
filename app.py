@@ -64,9 +64,19 @@ else:
     df = pd.DataFrame(data)
     df['價格'] = pd.to_numeric(df['價格'], errors='coerce').fillna(0)
     
-    # 顯示總花費看板
-    total_spent = int(df['價格'].sum())
-    st.metric(label="💰 總食材花費 (元)", value=f"${total_spent:,}")
+    # --- 改版：計算當月總花費 ---
+    # 1. 取得目前的年份與月份 (例如 '2026-03')
+    current_month = datetime.now().strftime("%Y-%m")
+    
+    # 2. 確保日期欄位是字串，並過濾出符合當月的資料
+    df['日期'] = df['日期'].astype(str)
+    monthly_df = df[df['日期'].str.startswith(current_month)]
+    
+    # 3. 計算當月花費總和
+    monthly_spent = int(monthly_df['價格'].sum())
+    
+    # 4. 顯示當月總花費看板 (標題會自動顯示現在是幾月)
+    st.metric(label=f"💰 本月 ({current_month}) 食材總花費 (元)", value=f"${monthly_spent:,}")
     
     st.markdown("---")
     st.subheader("📝 編輯買菜明細")
