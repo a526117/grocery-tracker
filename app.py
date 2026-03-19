@@ -24,92 +24,82 @@ except Exception as e:
     st.error(f"連線 Google 試算表失敗！錯誤訊息：{e}")
     st.stop()
 
-# --- 2. 頁面基本設定 ---
-st.set_page_config(page_title="自煮買菜記帳本", page_icon="🥬", layout="wide")
-st.title("🥬 雲端版：自煮買菜記帳本")
-st.write("資料已自動同步至 Google 試算表！可以直接在下方表格修改資料喔。")
+# --- 2. 頁面基本設定 (改為置中排版，手機看更舒服) ---
+st.set_page_config(page_title="自煮買菜記帳本", page_icon="🥬", layout="centered")
+st.title("🥬 買菜記帳本")
 
-# --- 3. 左側欄：新增紀錄的表單 ---
-with st.sidebar:
-    st.header("🛒 新增買菜紀錄")
+# --- 3. 手機版核心：使用分頁 (Tabs) 切換功能 ---
+tab1, tab2 = st.tabs(["📝 記一筆", "📊 本月明細與編輯"])
+
+# === 分頁 1：新增紀錄 ===
+with tab1:
+    st.markdown("### 🛒 新增花費")
     with st.form("expense_form", clear_on_submit=True):
         date = st.date_input("購買日期", datetime.now())
-        name = st.text_input("食材名稱 (例如：高麗菜)")
+        name = st.text_input("食材名稱 (例如：高麗菜 或 綜合採買)")
         category = st.selectbox("種類", ["蔬菜", "肉類", "海鮮", "水果", "調味料", "主食/麵包", "綜合採買", "其他"])
         
+        # 數量和單位在手機上並排顯示
         col1, col2 = st.columns(2)
         with col1:
             quantity = st.number_input("數量", min_value=0.1, value=1.0, step=0.5)
         with col2:
-            unit = st.text_input("單位 (例如：把、盒、克)", "把")
+            unit = st.text_input("單位 (例如：把、次)", "份")
             
         price = st.number_input("總價格 (元)", min_value=0, value=0, step=10)
         
-        submitted = st.form_submit_button("✅ 記上一筆")
+        # 手機版優化：按鈕設定為滿版寬度 (use_container_width=True)，方便單手點擊
+        submitted = st.form_submit_button("✅ 記上一筆", use_container_width=True)
         
         if submitted:
             if name and price > 0:
                 new_row = [date.strftime("%Y-%m-%d"), category, name, quantity, unit, price]
                 sheet.append_row(new_row)
-                st.success(f"成功新增：{name} (${price})，已同步至雲端！")
+                st.success(f"成功新增：{name} (${price})！")
             else:
                 st.error("請填寫食材名稱，並確保價格大於 0 喔！")
 
-# --- 4. 主畫面：顯示與「編輯」數據 ---
-data = sheet.get_all_records()
+# === 分頁 2：顯示數據與編輯 ===
+with tab2:
+    data = sheet.get_all_records()
 
-if not data:
-    st.info("目前 Google 試算表裡還沒有紀錄，快從左邊新增一筆吧！")
-else:
-    df = pd.DataFrame(data)
-    df['價格'] = pd.to_numeric(df['價格'], errors='coerce').fillna(0)
-    
-    # --- 改版：計算當月總花費 ---
-    # 1. 取得目前的年份與月份 (例如 '2026-03')
-    current_month = datetime.now().strftime("%Y-%m")
-    
-    # 2. 確保日期欄位是字串，並過濾出符合當月的資料
-    df['日期'] = df['日期'].astype(str)
-    monthly_df = df[df['日期'].str.startswith(current_month)]
-    
-    # 3. 計算當月花費總和
-    monthly_spent = int(monthly_df['價格'].sum())
-    
-    # 4. 顯示當月總花費看板 (標題會自動顯示現在是幾月)
-    st.metric(label=f"💰 本月 ({current_month}) 食材總花費 (元)", value=f"${monthly_spent:,}")
-    
-    st.markdown("---")
-    st.subheader("📝 編輯買菜明細")
-    st.info("💡 提示：點擊下方表格的格子可以直接修改內容！如果要刪除整筆資料，可以選取左側的框框後按 Delete。修改完成請務必按下方的「💾 儲存所有修改」按鈕。")
-    
-    # 將資料依照日期反向排序
-    df = df.sort_values(by='日期', ascending=False)
-    
-    # 這裡保留原始欄位，不把數量和單位合併，這樣才方便你單獨編輯
-    display_df = df[['日期', '種類', '食材名稱', '數量', '單位', '價格']]
-    
-    # 使用 st.data_editor 產生可互動編輯的表格
-    edited_df = st.data_editor(
-        display_df,
-        num_rows="dynamic", # 允許在表格最後面動態新增/刪除資料列
-        use_container_width=True,
-        hide_index=True
-    )
-    
-    # 建立一個儲存按鈕
-    if st.button("💾 儲存所有修改至雲端"):
-        # 將空值填補，避免寫入 Google Sheets 時出錯
-        edited_df = edited_df.fillna("")
+    if not data:
+        st.info("目前還沒有紀錄，快去「記一筆」吧！")
+    else:
+        df = pd.DataFrame(data)
+        df['價格'] = pd.to_numeric(df['價格'], errors='coerce').fillna(0)
         
-        # 將 DataFrame 轉換回 Google 試算表看得懂的列表格式 (包含標題列)
-        updated_data = [edited_df.columns.tolist()] + edited_df.values.tolist()
+        # 取得目前的年份與月份
+        current_month = datetime.now().strftime("%Y-%m")
+        df['日期'] = df['日期'].astype(str)
+        monthly_df = df[df['日期'].str.startswith(current_month)]
+        monthly_spent = int(monthly_df['價格'].sum())
         
-        try:
-            # 清空原本的試算表內容，並寫入修改後的新資料
-            sheet.clear()
-            sheet.update(range_name="A1", values=updated_data)
-            st.success("✅ 修改已成功同步至 Google 試算表！")
-            st.balloons() # 放個氣球慶祝一下
-            st.rerun() # 重新整理網頁畫面
-        except Exception as e:
-            st.error(f"儲存失敗，請稍後再試。錯誤訊息：{e}")
+        # 顯示當月總花費
+        st.metric(label=f"💰 本月 ({current_month}) 總花費", value=f"${monthly_spent:,}")
+        
+        st.markdown("---")
+        st.markdown("💡 **提示**：點擊下方表格即可修改，滑動可看完整欄位。")
+        
+        df = df.sort_values(by='日期', ascending=False)
+        display_df = df[['日期', '種類', '食材名稱', '數量', '單位', '價格']]
+        
+        # 互動式表格
+        edited_df = st.data_editor(
+            display_df,
+            num_rows="dynamic",
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # 儲存按鈕也改成滿版
+        if st.button("💾 儲存修改至雲端", use_container_width=True):
+            edited_df = edited_df.fillna("")
+            updated_data = [edited_df.columns.tolist()] + edited_df.values.tolist()
+            try:
+                sheet.clear()
+                sheet.update(range_name="A1", values=updated_data)
+                st.success("✅ 修改已成功同步！")
+                st.rerun()
+            except Exception as e:
+                st.error(f"儲存失敗：{e}")
