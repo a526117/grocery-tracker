@@ -35,7 +35,7 @@ with st.sidebar:
     with st.form("expense_form", clear_on_submit=True):
         date = st.date_input("購買日期", datetime.now())
         name = st.text_input("食材名稱 (例如：高麗菜)")
-        category = st.selectbox("種類", ["蔬菜", "肉類", "海鮮", "水果", "調味料", "主食/麵包", "其他"])
+        category = st.selectbox("種類", ["蔬菜", "肉類", "海鮮", "水果", "調味料", "主食/麵包", "綜合採買", "其他"])
         
         col1, col2 = st.columns(2)
         with col1:
